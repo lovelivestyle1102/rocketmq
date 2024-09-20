@@ -44,26 +44,45 @@ import sun.nio.ch.DirectBuffer;
 
 public class MappedFile extends ReferenceResource {
     public static final int OS_PAGE_SIZE = 1024 * 4;
+
     protected static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
     private static final AtomicLong TOTAL_MAPPED_VIRTUAL_MEMORY = new AtomicLong(0);
 
     private static final AtomicInteger TOTAL_MAPPED_FILES = new AtomicInteger(0);
+
+    //写入位置
     protected final AtomicInteger wrotePosition = new AtomicInteger(0);
+
+    //已提交位置
     protected final AtomicInteger committedPosition = new AtomicInteger(0);
+
+    //刷新位置
     private final AtomicInteger flushedPosition = new AtomicInteger(0);
+
+    //文件大小
     protected int fileSize;
+
+    //文件channel
     protected FileChannel fileChannel;
+
     /**
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      */
     protected ByteBuffer writeBuffer = null;
+
     protected TransientStorePool transientStorePool = null;
+
     private String fileName;
+
     private long fileFromOffset;
+
     private File file;
+
     private MappedByteBuffer mappedByteBuffer;
+
     private volatile long storeTimestamp = 0;
+
     private boolean firstCreateInQueue = false;
 
     public MappedFile() {
@@ -144,8 +163,12 @@ public class MappedFile extends ReferenceResource {
 
     public void init(final String fileName, final int fileSize,
         final TransientStorePool transientStorePool) throws IOException {
+
         init(fileName, fileSize);
+
+        //换取写缓冲
         this.writeBuffer = transientStorePool.borrowBuffer();
+
         this.transientStorePool = transientStorePool;
     }
 
@@ -159,10 +182,16 @@ public class MappedFile extends ReferenceResource {
         ensureDirOK(this.file.getParent());
 
         try {
+            //获取fileChannel，用于mapped
             this.fileChannel = new RandomAccessFile(this.file, "rw").getChannel();
+
+            //获取mapped缓冲区
             this.mappedByteBuffer = this.fileChannel.map(MapMode.READ_WRITE, 0, fileSize);
+
             TOTAL_MAPPED_VIRTUAL_MEMORY.addAndGet(fileSize);
+
             TOTAL_MAPPED_FILES.incrementAndGet();
+
             ok = true;
         } catch (FileNotFoundException e) {
             log.error("Failed to create file " + this.fileName, e);
@@ -207,8 +236,10 @@ public class MappedFile extends ReferenceResource {
         int currentPos = this.wrotePosition.get();
 
         if (currentPos < this.fileSize) {
+            //获取写缓冲区
             ByteBuffer byteBuffer = writeBuffer != null ? writeBuffer.slice() : this.mappedByteBuffer.slice();
             byteBuffer.position(currentPos);
+
             AppendMessageResult result;
             if (messageExt instanceof MessageExtBrokerInner) {
                 result = cb.doAppend(this.getFileFromOffset(), byteBuffer, this.fileSize - currentPos,
@@ -389,6 +420,7 @@ public class MappedFile extends ReferenceResource {
             if (this.hold()) {
                 ByteBuffer byteBuffer = this.mappedByteBuffer.slice();
                 byteBuffer.position(pos);
+
                 ByteBuffer byteBufferNew = byteBuffer.slice();
                 byteBufferNew.limit(size);
                 return new SelectMappedBufferResult(this.fileFromOffset + pos, byteBufferNew, size, this);
@@ -405,12 +437,18 @@ public class MappedFile extends ReferenceResource {
     }
 
     public SelectMappedBufferResult selectMappedBuffer(int pos) {
+        //获取可以读取的位置
         int readPosition = getReadPosition();
+
         if (pos < readPosition && pos >= 0) {
             if (this.hold()) {
+                //获取对应的buffer，设置读取的位置
                 ByteBuffer byteBuffer = this.mappedByteBuffer.slice();
                 byteBuffer.position(pos);
+
+                //本次可读的大小
                 int size = readPosition - pos;
+
                 ByteBuffer byteBufferNew = byteBuffer.slice();
                 byteBufferNew.limit(size);
                 return new SelectMappedBufferResult(this.fileFromOffset + pos, byteBufferNew, size, this);
@@ -493,7 +531,9 @@ public class MappedFile extends ReferenceResource {
         int flush = 0;
         long time = System.currentTimeMillis();
         for (int i = 0, j = 0; i < this.fileSize; i += MappedFile.OS_PAGE_SIZE, j++) {
+            //统统都写入0，占位置
             byteBuffer.put(i, (byte) 0);
+
             // force flush when flush disk type is sync
             if (type == FlushDiskType.SYNC_FLUSH) {
                 if ((i / OS_PAGE_SIZE) - (flush / OS_PAGE_SIZE) >= pages) {
@@ -514,6 +554,7 @@ public class MappedFile extends ReferenceResource {
             }
         }
 
+        //同步
         // force flush when prepare load finished
         if (type == FlushDiskType.SYNC_FLUSH) {
             log.info("mapped file warm-up done, force to disk, mappedFile={}, costTime={}",

@@ -50,6 +50,7 @@ public class IndexFile {
         this.indexNum = indexNum;
 
         ByteBuffer byteBuffer = this.mappedByteBuffer.slice();
+
         this.indexHeader = new IndexHeader(byteBuffer);
 
         if (endPhyOffset > 0) {
@@ -91,8 +92,14 @@ public class IndexFile {
 
     public boolean putKey(final String key, final long phyOffset, final long storeTimestamp) {
         if (this.indexHeader.getIndexCount() < this.indexNum) {
+
+            //得到key的哈希值
             int keyHash = indexKeyHashMethod(key);
+
+            //hashSlotNum 默认为5000000
             int slotPos = keyHash % this.hashSlotNum;
+
+            //算出绝对位置
             int absSlotPos = IndexHeader.INDEX_HEADER_SIZE + slotPos * hashSlotSize;
 
             FileLock fileLock = null;
@@ -118,25 +125,33 @@ public class IndexFile {
                     timeDiff = 0;
                 }
 
+                //计算写入的位置
                 int absIndexPos =
                     IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize
                         + this.indexHeader.getIndexCount() * indexSize;
 
+                //先向文件缓冲区添加记录，大小4
                 this.mappedByteBuffer.putInt(absIndexPos, keyHash);
+                //真实的物理偏移量，大小8
                 this.mappedByteBuffer.putLong(absIndexPos + 4, phyOffset);
+                //大小4
                 this.mappedByteBuffer.putInt(absIndexPos + 4 + 8, (int) timeDiff);
+                //大小4
                 this.mappedByteBuffer.putInt(absIndexPos + 4 + 8 + 4, slotValue);
-
+                //大小4
                 this.mappedByteBuffer.putInt(absSlotPos, this.indexHeader.getIndexCount());
+
 
                 if (this.indexHeader.getIndexCount() <= 1) {
                     this.indexHeader.setBeginPhyOffset(phyOffset);
                     this.indexHeader.setBeginTimestamp(storeTimestamp);
                 }
 
+                //如果第一次
                 if (invalidIndex == slotValue) {
                     this.indexHeader.incHashSlotCount();
                 }
+
                 this.indexHeader.incIndexCount();
                 this.indexHeader.setEndPhyOffset(phyOffset);
                 this.indexHeader.setEndTimestamp(storeTimestamp);

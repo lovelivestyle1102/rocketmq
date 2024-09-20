@@ -250,6 +250,7 @@ public class DefaultMQPullConsumerImpl implements MQConsumerInner {
         long timeoutMillis = block ? this.defaultMQPullConsumer.getConsumerTimeoutMillisWhenSuspend() : timeout;
 
         boolean isTagType = ExpressionType.isTagType(subscriptionData.getExpressionType());
+
         PullResult pullResult = this.pullAPIWrapper.pullKernelImpl(
             mq,
             subscriptionData.getSubString(),
@@ -264,9 +265,12 @@ public class DefaultMQPullConsumerImpl implements MQConsumerInner {
             CommunicationMode.SYNC,
             null
         );
+
         this.pullAPIWrapper.processPullResult(mq, pullResult, subscriptionData);
         //If namespace is not null , reset Topic without namespace.
+
         this.resetTopic(pullResult.getMsgFoundList());
+
         if (!this.consumeMessageHookList.isEmpty()) {
             ConsumeMessageContext consumeMessageContext = null;
             consumeMessageContext = new ConsumeMessageContext();

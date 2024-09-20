@@ -37,7 +37,8 @@ public class MessageStoreConfig {
     private String readOnlyCommitLogStorePaths = null;
 
     // CommitLog file size,default is 1G
-    private int mappedFileSizeCommitLog = 1024 * 1024 * 1024;
+//    private int mappedFileSizeCommitLog = 1024 * 1024 * 1024;
+    private int mappedFileSizeCommitLog = 1024 * 1024 * 8;
     // ConsumeQueue file size,default is 30W
     private int mappedFileSizeConsumeQueue = 300000 * ConsumeQueue.CQ_STORE_UNIT_SIZE;
     // enable consume queue ext
@@ -110,8 +111,10 @@ public class MessageStoreConfig {
     private int maxTransferBytesOnMessageInDisk = 1024 * 64;
     @ImportantField
     private int maxTransferCountOnMessageInDisk = 8;
+
     @ImportantField
     private int accessMessageInMemoryMaxRatio = 40;
+
     @ImportantField
     private boolean messageIndexEnable = true;
     private int maxHashSlotNum = 5000000;
@@ -126,13 +129,21 @@ public class MessageStoreConfig {
     @ImportantField
     private String haMasterAddress = null;
     private int haSlaveFallbehindMax = 1024 * 1024 * 256;
+
+    //默认角色为ASYNC_MASTER
     @ImportantField
     private BrokerRole brokerRole = BrokerRole.ASYNC_MASTER;
+
+    //默认刷盘ASYNC_FLUSH
     @ImportantField
     private FlushDiskType flushDiskType = FlushDiskType.ASYNC_FLUSH;
+
     private int syncFlushTimeout = 1000 * 5;
+
     private String messageDelayLevel = "1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h";
+
     private long flushDelayOffsetInterval = 1000 * 10;
+
     @ImportantField
     private boolean cleanFileForciblyEnable = true;
     private boolean warmMapedFileEnable = false;

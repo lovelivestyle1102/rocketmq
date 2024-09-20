@@ -122,7 +122,17 @@ public class DefaultMQProducerTest {
     @Test
     public void testSendMessage_ZeroMessage() throws InterruptedException, RemotingException, MQBrokerException {
         try {
-            producer.send(zeroMsg);
+            producer.send(zeroMsg, new SendCallback() {
+                @Override
+                public void onSuccess(SendResult sendResult) {
+
+                }
+
+                @Override
+                public void onException(Throwable e) {
+
+                }
+            });
             failBecauseExceptionWasNotThrown(MQClientException.class);
         } catch (MQClientException e) {
             assertThat(e).hasMessageContaining("message body length is zero");

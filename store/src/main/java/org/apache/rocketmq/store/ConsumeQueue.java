@@ -51,7 +51,9 @@ public class ConsumeQueue {
         final int mappedFileSize,
         final DefaultMessageStore defaultMessageStore) {
         this.storePath = storePath;
+
         this.mappedFileSize = mappedFileSize;
+
         this.defaultMessageStore = defaultMessageStore;
 
         this.topic = topic;
@@ -378,9 +380,14 @@ public class ConsumeQueue {
 
     public void putMessagePositionInfoWrapper(DispatchRequest request) {
         final int maxRetries = 30;
+
         boolean canWrite = this.defaultMessageStore.getRunningFlags().isCQWriteable();
+
         for (int i = 0; i < maxRetries && canWrite; i++) {
+
             long tagsCode = request.getTagsCode();
+
+            //消费队列辅助信息
             if (isExtWriteEnable()) {
                 ConsumeQueueExt.CqExtUnit cqExtUnit = new ConsumeQueueExt.CqExtUnit();
                 cqExtUnit.setFilterBitMap(request.getBitMap());
@@ -395,8 +402,10 @@ public class ConsumeQueue {
                         topic, queueId, request.getCommitLogOffset());
                 }
             }
+
             boolean result = this.putMessagePositionInfo(request.getCommitLogOffset(),
                 request.getMsgSize(), tagsCode, request.getConsumeQueueOffset());
+
             if (result) {
                 if (this.defaultMessageStore.getMessageStoreConfig().getBrokerRole() == BrokerRole.SLAVE ||
                     this.defaultMessageStore.getMessageStoreConfig().isEnableDLegerCommitLog()) {
@@ -430,12 +439,19 @@ public class ConsumeQueue {
             return true;
         }
 
+        //为写入数据做准备
         this.byteBufferIndex.flip();
+
+        //CQ_STORE_UNIT_SIZE大小为20
         this.byteBufferIndex.limit(CQ_STORE_UNIT_SIZE);
+        //大小为8，偏移量
         this.byteBufferIndex.putLong(offset);
+        //大小为4，大小
         this.byteBufferIndex.putInt(size);
+        //大小为8
         this.byteBufferIndex.putLong(tagsCode);
 
+        //
         final long expectLogicOffset = cqOffset * CQ_STORE_UNIT_SIZE;
 
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile(expectLogicOffset);
@@ -470,7 +486,9 @@ public class ConsumeQueue {
                     );
                 }
             }
+
             this.maxPhysicOffset = offset + size;
+
             return mappedFile.appendMessage(this.byteBufferIndex.array());
         }
         return false;

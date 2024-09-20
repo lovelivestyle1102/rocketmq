@@ -28,19 +28,31 @@ import java.util.regex.Pattern;
 public class TopicValidator {
 
     public static final String AUTO_CREATE_TOPIC_KEY_TOPIC = "TBW102"; // Will be created at broker when isAutoCreateTopicEnable
+
+    //延迟主题
     public static final String RMQ_SYS_SCHEDULE_TOPIC = "SCHEDULE_TOPIC_XXXX";
+
     public static final String RMQ_SYS_BENCHMARK_TOPIC = "BenchmarkTest";
+
+    //事务相关主题
     public static final String RMQ_SYS_TRANS_HALF_TOPIC = "RMQ_SYS_TRANS_HALF_TOPIC";
+
     public static final String RMQ_SYS_TRACE_TOPIC = "RMQ_SYS_TRACE_TOPIC";
+
     public static final String RMQ_SYS_TRANS_OP_HALF_TOPIC = "RMQ_SYS_TRANS_OP_HALF_TOPIC";
+
     public static final String RMQ_SYS_TRANS_CHECK_MAX_TIME_TOPIC = "TRANS_CHECK_MAX_TIME_TOPIC";
+
     public static final String RMQ_SYS_SELF_TEST_TOPIC = "SELF_TEST_TOPIC";
+
     public static final String RMQ_SYS_OFFSET_MOVED_EVENT = "OFFSET_MOVED_EVENT";
 
     public static final String SYSTEM_TOPIC_PREFIX = "rmq_sys_";
 
     private static final String VALID_PATTERN_STR = "^[%|a-zA-Z0-9_-]+$";
+
     private static final Pattern PATTERN = Pattern.compile(VALID_PATTERN_STR);
+
     private static final int TOPIC_MAX_LENGTH = 127;
 
     private static final Set<String> SYSTEM_TOPIC_SET = new HashSet<String>();

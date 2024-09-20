@@ -29,17 +29,44 @@ public class TransactionListenerImpl implements TransactionListener {
 
     private ConcurrentHashMap<String, Integer> localTrans = new ConcurrentHashMap<>();
 
+    /**
+     * 执行本地事务
+     *
+     * 当执行本地事务完成时，可以确定当前事务状态时则需要返回COMMIT_MESSAGE或ROLLBACK_MESSAGE。
+     * 当前不能确定的话则返回UNKNOW，后续依赖checkLocalTransaction来检测本地事务状态
+     * UNKNOW
+     * COMMIT_MESSAGE
+     * ROLLBACK_MESSAGE
+     *
+     * 三个地方可以传递业务参数
+     * 1 message body 占用带宽，污染body
+     * 2 message properties 占用带宽
+     * 3 arg 本地
+     *
+     * @param msg Half(prepare) message
+     * @param arg Custom business parameter
+     * @return
+     */
     @Override
     public LocalTransactionState executeLocalTransaction(Message msg, Object arg) {
+        System.out.println("消息内容为："+new String(msg.getBody()));
         int value = transactionIndex.getAndIncrement();
         int status = value % 3;
         localTrans.put(msg.getTransactionId(), status);
         return LocalTransactionState.UNKNOW;
     }
 
+    /**
+     * 默认是每隔60秒执行一次
+     *
+     * @param msg Check message
+     * @return
+     */
     @Override
     public LocalTransactionState checkLocalTransaction(MessageExt msg) {
         Integer status = localTrans.get(msg.getTransactionId());
+        System.out.println("索引为："+transactionIndex);
+        System.out.println("消息内容为："+new String(msg.getBody()));
         if (null != status) {
             switch (status) {
                 case 0:

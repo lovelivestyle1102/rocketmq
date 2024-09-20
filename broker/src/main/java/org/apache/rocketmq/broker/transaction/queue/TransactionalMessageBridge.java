@@ -197,6 +197,8 @@ public class TransactionalMessageBridge {
     }
 
     public CompletableFuture<PutMessageResult> asyncPutHalfMessage(MessageExtBrokerInner messageInner) {
+        //首先将消息的主题替换成RMQ_SYS_TRANS_HALF_TOPIC，将原来的主题放入消息的属性
+        //向普通消息一样向commitLog提交消息
         return store.asyncPutMessage(parseHalfMessageInner(messageInner));
     }
 

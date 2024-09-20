@@ -80,51 +80,73 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
                 request);
         }
 
-
+        //nameserver核心处理逻辑
         switch (request.getCode()) {
+            //添加配置处理
             case RequestCode.PUT_KV_CONFIG:
                 return this.putKVConfig(ctx, request);
+
             case RequestCode.GET_KV_CONFIG:
                 return this.getKVConfig(ctx, request);
+
             case RequestCode.DELETE_KV_CONFIG:
                 return this.deleteKVConfig(ctx, request);
+
             case RequestCode.QUERY_DATA_VERSION:
                 return queryBrokerTopicConfig(ctx, request);
+
+            //broker注册
             case RequestCode.REGISTER_BROKER:
                 Version brokerVersion = MQVersion.value2Version(request.getVersion());
                 if (brokerVersion.ordinal() >= MQVersion.Version.V3_0_11.ordinal()) {
                     return this.registerBrokerWithFilterServer(ctx, request);
                 } else {
+
                     return this.registerBroker(ctx, request);
                 }
+
             case RequestCode.UNREGISTER_BROKER:
                 return this.unregisterBroker(ctx, request);
+
             case RequestCode.GET_ROUTEINFO_BY_TOPIC:
                 return this.getRouteInfoByTopic(ctx, request);
+
             case RequestCode.GET_BROKER_CLUSTER_INFO:
                 return this.getBrokerClusterInfo(ctx, request);
+
             case RequestCode.WIPE_WRITE_PERM_OF_BROKER:
                 return this.wipeWritePermOfBroker(ctx, request);
+
             case RequestCode.ADD_WRITE_PERM_OF_BROKER:
                 return this.addWritePermOfBroker(ctx, request);
+
             case RequestCode.GET_ALL_TOPIC_LIST_FROM_NAMESERVER:
                 return getAllTopicListFromNameserver(ctx, request);
+
             case RequestCode.DELETE_TOPIC_IN_NAMESRV:
                 return deleteTopicInNamesrv(ctx, request);
+
             case RequestCode.GET_KVLIST_BY_NAMESPACE:
                 return this.getKVListByNamespace(ctx, request);
+
             case RequestCode.GET_TOPICS_BY_CLUSTER:
                 return this.getTopicsByCluster(ctx, request);
+
             case RequestCode.GET_SYSTEM_TOPIC_LIST_FROM_NS:
                 return this.getSystemTopicListFromNs(ctx, request);
+
             case RequestCode.GET_UNIT_TOPIC_LIST:
                 return this.getUnitTopicList(ctx, request);
+
             case RequestCode.GET_HAS_UNIT_SUB_TOPIC_LIST:
                 return this.getHasUnitSubTopicList(ctx, request);
+
             case RequestCode.GET_HAS_UNIT_SUB_UNUNIT_TOPIC_LIST:
                 return this.getHasUnitSubUnUnitTopicList(ctx, request);
+
             case RequestCode.UPDATE_NAMESRV_CONFIG:
                 return this.updateConfig(ctx, request);
+
             case RequestCode.GET_NAMESRV_CONFIG:
                 return this.getConfig(ctx, request);
             default:
@@ -149,6 +171,7 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
             response.setRemark("namespace or key is null");
             return response;
         }
+
         this.namesrvController.getKvConfigManager().putKVConfig(
             requestHeader.getNamespace(),
             requestHeader.getKey(),
@@ -226,6 +249,7 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
             registerBrokerBody.getTopicConfigSerializeWrapper().getDataVersion().setTimestamp(0);
         }
 
+        //向路由表添加broker信息
         RegisterBrokerResult result = this.namesrvController.getRouteInfoManager().registerBroker(
             requestHeader.getClusterName(),
             requestHeader.getBrokerAddr(),
@@ -306,6 +330,7 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
             topicConfigWrapper.getDataVersion().setTimestamp(0);
         }
 
+
         RegisterBrokerResult result = this.namesrvController.getRouteInfoManager().registerBroker(
             requestHeader.getClusterName(),
             requestHeader.getBrokerAddr(),
@@ -318,6 +343,7 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
         );
 
         responseHeader.setHaServerAddr(result.getHaServerAddr());
+
         responseHeader.setMasterAddr(result.getMasterAddr());
 
         byte[] jsonValue = this.namesrvController.getKvConfigManager().getKVListByNamespace(NamesrvUtil.NAMESPACE_ORDER_TOPIC_CONFIG);
@@ -346,7 +372,9 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
 
     public RemotingCommand getRouteInfoByTopic(ChannelHandlerContext ctx,
         RemotingCommand request) throws RemotingCommandException {
+
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
+
         final GetRouteInfoRequestHeader requestHeader =
             (GetRouteInfoRequestHeader) request.decodeCommandCustomHeader(GetRouteInfoRequestHeader.class);
 
@@ -357,6 +385,7 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
                 String orderTopicConf =
                     this.namesrvController.getKvConfigManager().getKVConfig(NamesrvUtil.NAMESPACE_ORDER_TOPIC_CONFIG,
                         requestHeader.getTopic());
+
                 topicRouteData.setOrderTopicConf(orderTopicConf);
             }
 

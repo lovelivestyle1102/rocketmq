@@ -81,6 +81,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
 
     private final Timer timer = new Timer("ClientHouseKeepingService", true);
 
+    //所有的nameserver服务地址
     private final AtomicReference<List<String>> namesrvAddrList = new AtomicReference<List<String>>();
     private final AtomicReference<String> namesrvAddrChoosed = new AtomicReference<String>();
     private final AtomicInteger namesrvIndex = new AtomicInteger(initValueIndex());
@@ -105,6 +106,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         this.nettyClientConfig = nettyClientConfig;
         this.channelEventListener = channelEventListener;
 
+        //CPU核心数
         int publicThreadNums = nettyClientConfig.getClientCallbackExecutorThreads();
         if (publicThreadNums <= 0) {
             publicThreadNums = 4;
@@ -150,6 +152,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
     @Override
     public void start() {
         this.defaultEventExecutorGroup = new DefaultEventExecutorGroup(
+            //默认为4个
             nettyClientConfig.getClientWorkerThreads(),
             new ThreadFactory() {
 
@@ -189,6 +192,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
                 }
             });
 
+        //定制扫描响应表格
         this.timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
@@ -563,6 +567,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         }
 
         Pair<NettyRequestProcessor, ExecutorService> pair = new Pair<NettyRequestProcessor, ExecutorService>(processor, executorThis);
+
         this.processorTable.put(requestCode, pair);
     }
 

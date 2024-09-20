@@ -31,40 +31,48 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class TransactionProducer {
-    public static void main(String[] args) throws MQClientException, InterruptedException {
+    public static void main(String[] args) throws MQClientException, InterruptedException, UnsupportedEncodingException {
         TransactionListener transactionListener = new TransactionListenerImpl();
-        TransactionMQProducer producer = new TransactionMQProducer("please_rename_unique_group_name");
-        ExecutorService executorService = new ThreadPoolExecutor(2, 5, 100, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(2000), new ThreadFactory() {
-            @Override
-            public Thread newThread(Runnable r) {
-                Thread thread = new Thread(r);
-                thread.setName("client-transaction-msg-check-thread");
-                return thread;
-            }
-        });
+        TransactionMQProducer producer = new TransactionMQProducer("t_long_2");
+//        ExecutorService executorService = new ThreadPoolExecutor(2, 5, 100, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(2000), new ThreadFactory() {
+//            @Override
+//            public Thread newThread(Runnable r) {
+//                Thread thread = new Thread(r);
+//                thread.setName("client-transaction-msg-check-thread");
+//                return thread;
+//            }
+//        });
 
-        producer.setExecutorService(executorService);
+//        producer.setExecutorService(executorService);
         producer.setTransactionListener(transactionListener);
+        producer.setNamesrvAddr("10.0.44.44:9876");
         producer.start();
 
-        String[] tags = new String[] {"TagA", "TagB", "TagC", "TagD", "TagE"};
-        for (int i = 0; i < 10; i++) {
-            try {
-                Message msg =
-                    new Message("TopicTest1234", tags[i % tags.length], "KEY" + i,
-                        ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET));
-                SendResult sendResult = producer.sendMessageInTransaction(msg, null);
-                System.out.printf("%s%n", sendResult);
+        Message msg =
+                new Message("long9528", "TagB", "KEY" ,
+                        ("Hello RocketMQ ").getBytes(RemotingHelper.DEFAULT_CHARSET));
+        SendResult sendResult = producer.sendMessageInTransaction(msg, "long9528");
 
-                Thread.sleep(10);
-            } catch (MQClientException | UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
-        }
+        System.out.printf("%s%n", sendResult);
 
-        for (int i = 0; i < 100000; i++) {
-            Thread.sleep(1000);
-        }
-        producer.shutdown();
+//        String[] tags = new String[] {"TagA", "TagB", "TagC", "TagD", "TagE"};
+//        for (int i = 0; i < 10; i++) {
+//            try {
+//                Message msg =
+//                    new Message("long9527", tags[i % tags.length], "KEY" + i,
+//                        ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET));
+//                SendResult sendResult = producer.sendMessageInTransaction(msg, null);
+//                System.out.printf("%s%n", sendResult);
+//
+////                Thread.sleep(10);
+//            } catch (MQClientException | UnsupportedEncodingException e) {
+//                e.printStackTrace();
+//            }
+//        }
+
+//        for (int i = 0; i < 100000; i++) {
+//            Thread.sleep(1000);
+//        }
+//        producer.shutdown();
     }
 }

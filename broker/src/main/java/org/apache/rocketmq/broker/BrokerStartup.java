@@ -50,8 +50,11 @@ import static org.apache.rocketmq.remoting.netty.TlsSystemConfig.TLS_ENABLE;
 
 public class BrokerStartup {
     public static Properties properties = null;
+
     public static CommandLine commandLine = null;
+
     public static String configFile = null;
+
     public static InternalLogger log;
 
     public static void main(String[] args) {
@@ -71,7 +74,9 @@ public class BrokerStartup {
             }
 
             log.info(tip);
+
             System.out.printf("%s%n", tip);
+
             return controller;
         } catch (Throwable e) {
             e.printStackTrace();
@@ -101,6 +106,7 @@ public class BrokerStartup {
         try {
             //PackageConflictDetect.detectFastjson();
             Options options = ServerUtil.buildCommandlineOptions(new Options());
+
             commandLine = ServerUtil.parseCmdLine("mqbroker", args, buildCommandlineOptions(options),
                 new PosixParser());
             if (null == commandLine) {
@@ -108,16 +114,23 @@ public class BrokerStartup {
             }
 
             final BrokerConfig brokerConfig = new BrokerConfig();
+
             final NettyServerConfig nettyServerConfig = new NettyServerConfig();
             final NettyClientConfig nettyClientConfig = new NettyClientConfig();
 
             nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
                 String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
+
             nettyServerConfig.setListenPort(10911);
+
             final MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
 
+            //如果是从节点
             if (BrokerRole.SLAVE == messageStoreConfig.getBrokerRole()) {
+                //默认为40
                 int ratio = messageStoreConfig.getAccessMessageInMemoryMaxRatio() - 10;
+
+                //30
                 messageStoreConfig.setAccessMessageInMemoryMaxRatio(ratio);
             }
 
@@ -165,6 +178,7 @@ public class BrokerStartup {
             switch (messageStoreConfig.getBrokerRole()) {
                 case ASYNC_MASTER:
                 case SYNC_MASTER:
+                    //设置主节点的Id
                     brokerConfig.setBrokerId(MixAll.MASTER_ID);
                     break;
                 case SLAVE:
@@ -183,10 +197,12 @@ public class BrokerStartup {
             }
 
             messageStoreConfig.setHaListenPort(nettyServerConfig.getListenPort() + 1);
+
             LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
             JoranConfigurator configurator = new JoranConfigurator();
             configurator.setContext(lc);
             lc.reset();
+
             configurator.doConfigure(brokerConfig.getRocketmqHome() + "/conf/logback_broker.xml");
 
             if (commandLine.hasOption('p')) {
@@ -211,15 +227,19 @@ public class BrokerStartup {
             MixAll.printObjectProperties(log, nettyClientConfig);
             MixAll.printObjectProperties(log, messageStoreConfig);
 
+            //创建broker控制器
             final BrokerController controller = new BrokerController(
                 brokerConfig,
                 nettyServerConfig,
                 nettyClientConfig,
                 messageStoreConfig);
+
             // remember all configs to prevent discard
             controller.getConfiguration().registerConfig(properties);
 
+            //初始化控制器
             boolean initResult = controller.initialize();
+
             if (!initResult) {
                 controller.shutdown();
                 System.exit(-3);

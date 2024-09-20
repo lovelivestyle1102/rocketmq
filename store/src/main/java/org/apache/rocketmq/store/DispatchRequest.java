@@ -60,7 +60,6 @@ public class DispatchRequest {
         this.consumeQueueOffset = consumeQueueOffset;
         this.keys = keys;
         this.uniqKey = uniqKey;
-
         this.sysFlag = sysFlag;
         this.preparedTransactionOffset = preparedTransactionOffset;
         this.success = true;

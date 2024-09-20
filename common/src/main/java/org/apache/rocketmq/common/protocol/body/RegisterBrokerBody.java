@@ -41,7 +41,9 @@ import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 public class RegisterBrokerBody extends RemotingSerializable {
 
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
+    //主题数据
     private TopicConfigSerializeWrapper topicConfigSerializeWrapper = new TopicConfigSerializeWrapper();
+
     private List<String> filterServerList = new ArrayList<String>();
 
     public byte[] encode(boolean compress) {

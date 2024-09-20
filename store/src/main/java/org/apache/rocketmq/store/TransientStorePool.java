@@ -32,14 +32,20 @@ public class TransientStorePool {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
     private final int poolSize;
+
     private final int fileSize;
+
     private final Deque<ByteBuffer> availableBuffers;
+
     private final MessageStoreConfig storeConfig;
 
     public TransientStorePool(final MessageStoreConfig storeConfig) {
         this.storeConfig = storeConfig;
+        //默认大小5
         this.poolSize = storeConfig.getTransientStorePoolSize();
+        //默认大小1G
         this.fileSize = storeConfig.getMappedFileSizeCommitLog();
+
         this.availableBuffers = new ConcurrentLinkedDeque<>();
     }
 
@@ -48,10 +54,13 @@ public class TransientStorePool {
      */
     public void init() {
         for (int i = 0; i < poolSize; i++) {
+            //分配1G缓存
             ByteBuffer byteBuffer = ByteBuffer.allocateDirect(fileSize);
 
             final long address = ((DirectBuffer) byteBuffer).address();
+
             Pointer pointer = new Pointer(address);
+
             LibC.INSTANCE.mlock(pointer, new NativeLong(fileSize));
 
             availableBuffers.offer(byteBuffer);

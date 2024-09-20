@@ -28,9 +28,14 @@ public abstract class ServiceThread implements Runnable {
     private static final long JOIN_TIME = 90 * 1000;
 
     private Thread thread;
+
     protected final CountDownLatch2 waitPoint = new CountDownLatch2(1);
+
+    //是否有通知表示
     protected volatile AtomicBoolean hasNotified = new AtomicBoolean(false);
+
     protected volatile boolean stopped = false;
+
     protected boolean isDaemon = false;
 
     //Make it able to restart the thread
@@ -47,7 +52,9 @@ public abstract class ServiceThread implements Runnable {
         if (!started.compareAndSet(false, true)) {
             return;
         }
+
         stopped = false;
+
         this.thread = new Thread(this, getServiceName());
         this.thread.setDaemon(isDaemon);
         this.thread.start();
@@ -121,14 +128,18 @@ public abstract class ServiceThread implements Runnable {
     }
 
     public void wakeup() {
+        //将hasNotified设置为true
         if (hasNotified.compareAndSet(false, true)) {
             waitPoint.countDown(); // notify
         }
     }
 
     protected void waitForRunning(long interval) {
+        //将hasNotified设置为false
         if (hasNotified.compareAndSet(true, false)) {
+            //将写请求转换为读请求
             this.onWaitEnd();
+
             return;
         }
 

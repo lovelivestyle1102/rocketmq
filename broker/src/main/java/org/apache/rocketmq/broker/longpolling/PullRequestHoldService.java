@@ -68,6 +68,7 @@ public class PullRequestHoldService extends ServiceThread {
         log.info("{} service started", this.getServiceName());
         while (!this.isStopped()) {
             try {
+                //长轮训
                 if (this.brokerController.getBrokerConfig().isLongPollingEnable()) {
                     this.waitForRunning(5 * 1000);
                 } else {
@@ -75,8 +76,11 @@ public class PullRequestHoldService extends ServiceThread {
                 }
 
                 long beginLockTimestamp = this.systemClock.now();
+
                 this.checkHoldRequest();
+
                 long costTime = this.systemClock.now() - beginLockTimestamp;
+
                 if (costTime > 5 * 1000) {
                     log.info("[NOTIFYME] check hold request cost {} ms.", costTime);
                 }

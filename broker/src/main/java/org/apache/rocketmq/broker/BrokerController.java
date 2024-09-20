@@ -162,10 +162,15 @@ public class BrokerController {
     private BrokerFastFailure brokerFastFailure;
     private Configuration configuration;
     private FileWatchService fileWatchService;
+
     private TransactionalMessageCheckService transactionalMessageCheckService;
+
     private TransactionalMessageService transactionalMessageService;
+
     private AbstractTransactionalMessageCheckListener transactionalMessageCheckListener;
+
     private Future<?> slaveSyncFuture;
+
     private Map<Class,AccessValidator> accessValidatorMap = new HashMap<Class, AccessValidator>();
 
     public BrokerController(
@@ -175,43 +180,70 @@ public class BrokerController {
         final MessageStoreConfig messageStoreConfig
     ) {
         this.brokerConfig = brokerConfig;
+
         this.nettyServerConfig = nettyServerConfig;
+
         this.nettyClientConfig = nettyClientConfig;
+
         this.messageStoreConfig = messageStoreConfig;
+
         this.consumerOffsetManager = new ConsumerOffsetManager(this);
+
         this.topicConfigManager = new TopicConfigManager(this);
+
         this.pullMessageProcessor = new PullMessageProcessor(this);
+
         this.pullRequestHoldService = new PullRequestHoldService(this);
+
         this.messageArrivingListener = new NotifyMessageArrivingListener(this.pullRequestHoldService);
+
         this.consumerIdsChangeListener = new DefaultConsumerIdsChangeListener(this);
+
         this.consumerManager = new ConsumerManager(this.consumerIdsChangeListener);
+
         this.consumerFilterManager = new ConsumerFilterManager(this);
+
         this.producerManager = new ProducerManager();
+
         this.clientHousekeepingService = new ClientHousekeepingService(this);
+
         this.broker2Client = new Broker2Client(this);
+
         this.subscriptionGroupManager = new SubscriptionGroupManager(this);
+
         this.brokerOuterAPI = new BrokerOuterAPI(nettyClientConfig);
+
         this.filterServerManager = new FilterServerManager(this);
 
         this.slaveSynchronize = new SlaveSynchronize(this);
 
         this.sendThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getSendThreadPoolQueueCapacity());
+
         this.pullThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getPullThreadPoolQueueCapacity());
+
         this.replyThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getReplyThreadPoolQueueCapacity());
+
         this.queryThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getQueryThreadPoolQueueCapacity());
+
         this.clientManagerThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getClientManagerThreadPoolQueueCapacity());
+
         this.consumerManagerThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getConsumerManagerThreadPoolQueueCapacity());
+
         this.heartbeatThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getHeartbeatThreadPoolQueueCapacity());
+
         this.endTransactionThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getEndTransactionPoolQueueCapacity());
 
         this.brokerStatsManager = new BrokerStatsManager(this.brokerConfig.getBrokerClusterName());
+
         this.setStoreHost(new InetSocketAddress(this.getBrokerConfig().getBrokerIP1(), this.getNettyServerConfig().getListenPort()));
 
         this.brokerFastFailure = new BrokerFastFailure(this);
+
         this.configuration = new Configuration(
             log,
             BrokerPathConfigHelper.getBrokerConfigPath(),
-            this.brokerConfig, this.nettyServerConfig, this.nettyClientConfig, this.messageStoreConfig
+            this.brokerConfig,
+                this.nettyServerConfig, this.nettyClientConfig, this.messageStoreConfig
         );
     }
 
@@ -232,25 +264,39 @@ public class BrokerController {
     }
 
     public boolean initialize() throws CloneNotSupportedException {
+
+        //加载config文件下配置文件，topics.json
         boolean result = this.topicConfigManager.load();
 
+        //加载config文件下配置文件，consumerOffset.json
         result = result && this.consumerOffsetManager.load();
+
+        //加载config文件下配置文件，subscriptionGroup.json
         result = result && this.subscriptionGroupManager.load();
+
+        //加载config文件下配置文件，consumerFilter.json
         result = result && this.consumerFilterManager.load();
 
         if (result) {
             try {
+                //加载消息存储
                 this.messageStore =
                     new DefaultMessageStore(this.messageStoreConfig, this.brokerStatsManager, this.messageArrivingListener,
                         this.brokerConfig);
+
+                //是否启动DLedger高可用架构
                 if (messageStoreConfig.isEnableDLegerCommitLog()) {
                     DLedgerRoleChangeHandler roleChangeHandler = new DLedgerRoleChangeHandler(this, (DefaultMessageStore) messageStore);
                     ((DLedgerCommitLog)((DefaultMessageStore) messageStore).getCommitLog()).getdLedgerServer().getdLedgerLeaderElector().addRoleChangeHandler(roleChangeHandler);
                 }
+
                 this.brokerStats = new BrokerStats((DefaultMessageStore) this.messageStore);
+
                 //load plugin
                 MessageStorePluginContext context = new MessageStorePluginContext(messageStoreConfig, brokerStatsManager, messageArrivingListener, brokerConfig);
+
                 this.messageStore = MessageStoreFactory.build(context, this.messageStore);
+
                 this.messageStore.getDispatcherList().addFirst(new CommitLogDispatcherCalcBitMap(this.brokerConfig, this.consumerFilterManager));
             } catch (IOException e) {
                 result = false;
@@ -261,10 +307,17 @@ public class BrokerController {
         result = result && this.messageStore.load();
 
         if (result) {
+
             this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.clientHousekeepingService);
+
+            //复制netty配置
             NettyServerConfig fastConfig = (NettyServerConfig) this.nettyServerConfig.clone();
+
+            //修改监听端口
             fastConfig.setListenPort(nettyServerConfig.getListenPort() - 2);
+
             this.fastRemotingServer = new NettyRemotingServer(fastConfig, this.clientHousekeepingService);
+
             this.sendMessageExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getSendMessageThreadPoolNums(),
                 this.brokerConfig.getSendMessageThreadPoolNums(),
@@ -329,6 +382,7 @@ public class BrokerController {
                 Executors.newFixedThreadPool(this.brokerConfig.getConsumerManageThreadPoolNums(), new ThreadFactoryImpl(
                     "ConsumerManageThread_"));
 
+            //注册处理器
             this.registerProcessor();
 
             final long initialDelay = UtilAll.computeNextMorningTimeMillis() - System.currentTimeMillis();
@@ -479,25 +533,34 @@ public class BrokerController {
                     log.warn("FileWatchService created error, can't load the certificate dynamically");
                 }
             }
+
+            //初始化事务相关类
             initialTransaction();
+
             initialAcl();
+
             initialRpcHooks();
         }
         return result;
     }
 
     private void initialTransaction() {
+        //加载并初始化TransactionalMessageServiceImpl
         this.transactionalMessageService = ServiceProvider.loadClass(ServiceProvider.TRANSACTION_SERVICE_ID, TransactionalMessageService.class);
         if (null == this.transactionalMessageService) {
             this.transactionalMessageService = new TransactionalMessageServiceImpl(new TransactionalMessageBridge(this, this.getMessageStore()));
             log.warn("Load default transaction message hook service: {}", TransactionalMessageServiceImpl.class.getSimpleName());
         }
+
+        //加载并初始化DefaultTransactionalMessageCheckListener，事务校验逻辑
         this.transactionalMessageCheckListener = ServiceProvider.loadClass(ServiceProvider.TRANSACTION_LISTENER_ID, AbstractTransactionalMessageCheckListener.class);
         if (null == this.transactionalMessageCheckListener) {
             this.transactionalMessageCheckListener = new DefaultTransactionalMessageCheckListener();
             log.warn("Load default discard message hook service: {}", DefaultTransactionalMessageCheckListener.class.getSimpleName());
         }
+
         this.transactionalMessageCheckListener.setBrokerController(this);
+
         this.transactionalMessageCheckService = new TransactionalMessageCheckService(this);
     }
 
@@ -849,10 +912,12 @@ public class BrokerController {
     }
 
     public void start() throws Exception {
+        //启动核心的消息存储组件
         if (this.messageStore != null) {
             this.messageStore.start();
         }
 
+        //netty服务启动
         if (this.remotingServer != null) {
             this.remotingServer.start();
         }
@@ -865,6 +930,7 @@ public class BrokerController {
             this.fileWatchService.start();
         }
 
+        //启动客户端，往外发请求
         if (this.brokerOuterAPI != null) {
             this.brokerOuterAPI.start();
         }
@@ -881,12 +947,18 @@ public class BrokerController {
             this.filterServerManager.start();
         }
 
+        //不开启dleger模式
         if (!messageStoreConfig.isEnableDLegerCommitLog()) {
             startProcessorByHa(messageStoreConfig.getBrokerRole());
+
             handleSlaveSynchronize(messageStoreConfig.getBrokerRole());
+
+            // 向NameServer注册心跳
             this.registerBrokerAll(true, false, true);
         }
 
+
+        //发送心跳（默认30s），向nameserver注册
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -954,6 +1026,7 @@ public class BrokerController {
 
     private void doRegisterBrokerAll(boolean checkOrderConfig, boolean oneway,
         TopicConfigSerializeWrapper topicConfigWrapper) {
+
         List<RegisterBrokerResult> registerBrokerResultList = this.brokerOuterAPI.registerBrokerAll(
             this.brokerConfig.getBrokerClusterName(),
             this.getBrokerAddr(),
@@ -1132,11 +1205,14 @@ public class BrokerController {
     }
 
     private void handleSlaveSynchronize(BrokerRole role) {
+        //从节点
         if (role == BrokerRole.SLAVE) {
             if (null != slaveSyncFuture) {
                 slaveSyncFuture.cancel(false);
             }
+
             this.slaveSynchronize.setMasterAddr(null);
+
             slaveSyncFuture = this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
                 @Override
                 public void run() {
@@ -1153,6 +1229,7 @@ public class BrokerController {
             if (null != slaveSyncFuture) {
                 slaveSyncFuture.cancel(false);
             }
+
             this.slaveSynchronize.setMasterAddr(null);
         }
     }
@@ -1227,6 +1304,7 @@ public class BrokerController {
     }
 
     private void startProcessorByHa(BrokerRole role) {
+        //非SLAVE节点
         if (BrokerRole.SLAVE != role) {
             if (this.transactionalMessageCheckService != null) {
                 this.transactionalMessageCheckService.start();

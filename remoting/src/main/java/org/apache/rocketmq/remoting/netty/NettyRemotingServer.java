@@ -71,6 +71,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     private final NettyServerConfig nettyServerConfig;
 
     private final ExecutorService publicExecutor;
+
     private final ChannelEventListener channelEventListener;
 
     private final Timer timer = new Timer("ServerHouseKeepingService", true);
@@ -95,9 +96,13 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
 
     public NettyRemotingServer(final NettyServerConfig nettyServerConfig,
         final ChannelEventListener channelEventListener) {
+
         super(nettyServerConfig.getServerOnewaySemaphoreValue(), nettyServerConfig.getServerAsyncSemaphoreValue());
+
         this.serverBootstrap = new ServerBootstrap();
+
         this.nettyServerConfig = nettyServerConfig;
+
         this.channelEventListener = channelEventListener;
 
         int publicThreadNums = nettyServerConfig.getServerCallbackExecutorThreads();
@@ -182,6 +187,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     @Override
     public void start() {
         this.defaultEventExecutorGroup = new DefaultEventExecutorGroup(
+            //默认为3个线程数
             nettyServerConfig.getServerWorkerThreads(),
             new ThreadFactory() {
 
@@ -193,6 +199,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                 }
             });
 
+        //创建netty共享处理器
         prepareSharableHandlers();
 
         ServerBootstrap childHandler =
@@ -209,12 +216,18 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
                         ch.pipeline()
+                            //https处理
                             .addLast(defaultEventExecutorGroup, HANDSHAKE_HANDLER_NAME, handshakeHandler)
+                            //
                             .addLast(defaultEventExecutorGroup,
+                                //加解码处理器
                                 encoder,
                                 new NettyDecoder(),
+                                //空闲检测处理器
                                 new IdleStateHandler(0, 0, nettyServerConfig.getServerChannelMaxIdleTimeSeconds()),
+                                //连接处理器
                                 connectionManageHandler,
+                                //业务处理器
                                 serverHandler
                             );
                     }

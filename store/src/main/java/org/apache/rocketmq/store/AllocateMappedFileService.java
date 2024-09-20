@@ -37,10 +37,14 @@ import org.apache.rocketmq.store.config.BrokerRole;
 public class AllocateMappedFileService extends ServiceThread {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static int waitTimeOut = 1000 * 5;
+
     private ConcurrentMap<String, AllocateRequest> requestTable =
         new ConcurrentHashMap<String, AllocateRequest>();
+
+    //文件分配请求队列
     private PriorityBlockingQueue<AllocateRequest> requestQueue =
         new PriorityBlockingQueue<AllocateRequest>();
+
     private volatile boolean hasException = false;
     private DefaultMessageStore messageStore;
 
@@ -48,6 +52,7 @@ public class AllocateMappedFileService extends ServiceThread {
         this.messageStore = messageStore;
     }
 
+    //一般同时会提交俩个创建文件请求
     public MappedFile putRequestAndReturnMappedFile(String nextFilePath, String nextNextFilePath, int fileSize) {
         int canSubmitRequests = 2;
         if (this.messageStore.getMessageStoreConfig().isTransientStorePoolEnable()) {
@@ -58,6 +63,7 @@ public class AllocateMappedFileService extends ServiceThread {
         }
 
         AllocateRequest nextReq = new AllocateRequest(nextFilePath, fileSize);
+
         boolean nextPutOK = this.requestTable.putIfAbsent(nextFilePath, nextReq) == null;
 
         if (nextPutOK) {
@@ -67,15 +73,21 @@ public class AllocateMappedFileService extends ServiceThread {
                 this.requestTable.remove(nextFilePath);
                 return null;
             }
+
             boolean offerOK = this.requestQueue.offer(nextReq);
+
             if (!offerOK) {
                 log.warn("never expected here, add a request to preallocate queue failed");
             }
+
             canSubmitRequests--;
         }
 
         AllocateRequest nextNextReq = new AllocateRequest(nextNextFilePath, fileSize);
+
+        //需要同时放入requestTable和requestQueue中，才算成功
         boolean nextNextPutOK = this.requestTable.putIfAbsent(nextNextFilePath, nextNextReq) == null;
+
         if (nextNextPutOK) {
             if (canSubmitRequests <= 0) {
                 log.warn("[NOTIFYME]TransientStorePool is not enough, so skip preallocate mapped file, " +
@@ -148,12 +160,14 @@ public class AllocateMappedFileService extends ServiceThread {
         AllocateRequest req = null;
         try {
             req = this.requestQueue.take();
+
             AllocateRequest expectedRequest = this.requestTable.get(req.getFilePath());
             if (null == expectedRequest) {
                 log.warn("this mmap request expired, maybe cause timeout " + req.getFilePath() + " "
                     + req.getFileSize());
                 return true;
             }
+
             if (expectedRequest != req) {
                 log.warn("never expected here,  maybe cause timeout " + req.getFilePath() + " "
                     + req.getFileSize() + ", req:" + req + ", expectedRequest:" + expectedRequest);
@@ -184,16 +198,21 @@ public class AllocateMappedFileService extends ServiceThread {
                 }
 
                 // pre write mappedFile
+                //内存预热，提前往内存页写入0
                 if (mappedFile.getFileSize() >= this.messageStore.getMessageStoreConfig()
                     .getMappedFileSizeCommitLog()
                     &&
                     this.messageStore.getMessageStoreConfig().isWarmMapedFileEnable()) {
+
+                    //内存预热
                     mappedFile.warmMappedFile(this.messageStore.getMessageStoreConfig().getFlushDiskType(),
                         this.messageStore.getMessageStoreConfig().getFlushLeastPagesWhenWarmMapedFile());
                 }
 
                 req.setMappedFile(mappedFile);
+
                 this.hasException = false;
+
                 isSuccess = true;
             }
         } catch (InterruptedException e) {

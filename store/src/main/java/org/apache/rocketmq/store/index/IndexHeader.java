@@ -114,7 +114,9 @@ public class IndexHeader {
     }
 
     public void incIndexCount() {
+        //索引数量
         int value = this.indexCount.incrementAndGet();
+
         this.byteBuffer.putInt(indexCountIndex, value);
     }
 }

@@ -182,12 +182,15 @@ public class MixAll {
     public static String file2String(final File file) throws IOException {
         if (file.exists()) {
             byte[] data = new byte[(int) file.length()];
+
             boolean result;
 
             FileInputStream inputStream = null;
             try {
                 inputStream = new FileInputStream(file);
+
                 int len = inputStream.read(data);
+
                 result = len == data.length;
             } finally {
                 if (inputStream != null) {

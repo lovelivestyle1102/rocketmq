@@ -30,6 +30,7 @@ public abstract class ConfigManager {
         String fileName = null;
         try {
             fileName = this.configFilePath();
+
             String jsonString = MixAll.file2String(fileName);
 
             if (null == jsonString || jsonString.length() == 0) {

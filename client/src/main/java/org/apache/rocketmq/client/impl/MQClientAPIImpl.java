@@ -186,11 +186,15 @@ public class MQClientAPIImpl {
         final ClientRemotingProcessor clientRemotingProcessor,
         RPCHook rpcHook, final ClientConfig clientConfig) {
         this.clientConfig = clientConfig;
+
         topAddressing = new TopAddressing(MixAll.getWSAddr(), clientConfig.getUnitName());
+
         this.remotingClient = new NettyRemotingClient(nettyClientConfig, null);
+
         this.clientRemotingProcessor = clientRemotingProcessor;
 
         this.remotingClient.registerRPCHook(rpcHook);
+
         this.remotingClient.registerProcessor(RequestCode.CHECK_TRANSACTION_STATE, this.clientRemotingProcessor, null);
 
         this.remotingClient.registerProcessor(RequestCode.NOTIFY_CONSUMER_IDS_CHANGED, this.clientRemotingProcessor, null);
@@ -466,6 +470,7 @@ public class MQClientAPIImpl {
                 request = RemotingCommand.createRequestCommand(RequestCode.SEND_MESSAGE, requestHeader);
             }
         }
+
         request.setBody(msg.getBody());
 
         switch (communicationMode) {
@@ -552,6 +557,7 @@ public class MQClientAPIImpl {
                         }
 
                         try {
+                            //执行成功回调信息
                             sendCallback.onSuccess(sendResult);
                         } catch (Throwable e) {
                         }

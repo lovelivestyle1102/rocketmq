@@ -49,27 +49,39 @@ public class NamesrvController {
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl(
         "NSScheduledThread"));
     private final KVConfigManager kvConfigManager;
+
+    //管理路由信息的对象，重要
     private final RouteInfoManager routeInfoManager;
 
+    //网路层封装对象，重要
     private RemotingServer remotingServer;
 
+    //
     private BrokerHousekeepingService brokerHousekeepingService;
 
+    //业务线程池
     private ExecutorService remotingExecutor;
 
     private Configuration configuration;
+
     private FileWatchService fileWatchService;
 
     public NamesrvController(NamesrvConfig namesrvConfig, NettyServerConfig nettyServerConfig) {
         this.namesrvConfig = namesrvConfig;
+
         this.nettyServerConfig = nettyServerConfig;
+
         this.kvConfigManager = new KVConfigManager(this);
+        //路由信息管理器
         this.routeInfoManager = new RouteInfoManager();
+
         this.brokerHousekeepingService = new BrokerHousekeepingService(this);
+
         this.configuration = new Configuration(
             log,
             this.namesrvConfig, this.nettyServerConfig
         );
+
         this.configuration.setStorePathFromConfig(this.namesrvConfig, "configStorePath");
     }
 
@@ -82,8 +94,10 @@ public class NamesrvController {
         this.remotingExecutor =
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
 
+        //注册协议处理器
         this.registerProcessor();
 
+        //NameServer每隔10s扫描一次broker，移除处于不激活状态的Broker
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -92,6 +106,7 @@ public class NamesrvController {
             }
         }, 5, 10, TimeUnit.SECONDS);
 
+        //每隔10分钟打印配置
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -147,7 +162,7 @@ public class NamesrvController {
             this.remotingServer.registerDefaultProcessor(new ClusterTestRequestProcessor(this, namesrvConfig.getProductEnvName()),
                 this.remotingExecutor);
         } else {
-
+            //注册 缺省的协议处理器
             this.remotingServer.registerDefaultProcessor(new DefaultRequestProcessor(this), this.remotingExecutor);
         }
     }

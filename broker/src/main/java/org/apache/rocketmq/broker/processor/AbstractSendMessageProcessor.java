@@ -77,8 +77,7 @@ public abstract class AbstractSendMessageProcessor extends AsyncNettyRequestProc
             return null;
         }
         String namespace = NamespaceUtil.getNamespaceFromResource(requestHeader.getTopic());
-        SendMessageContext mqtraceContext;
-        mqtraceContext = new SendMessageContext();
+        SendMessageContext mqtraceContext = new SendMessageContext();
         mqtraceContext.setProducerGroup(requestHeader.getProducerGroup());
         mqtraceContext.setNamespace(namespace);
         mqtraceContext.setTopic(requestHeader.getTopic());
@@ -177,6 +176,7 @@ public abstract class AbstractSendMessageProcessor extends AsyncNettyRequestProc
         if (!TopicValidator.validateTopic(requestHeader.getTopic(), response)) {
             return response;
         }
+
         if (TopicValidator.isNotAllowedSendTopic(requestHeader.getTopic(), response)) {
             return response;
         }
@@ -194,6 +194,7 @@ public abstract class AbstractSendMessageProcessor extends AsyncNettyRequestProc
             }
 
             log.warn("the topic {} not exist, producer: {}", requestHeader.getTopic(), ctx.channel().remoteAddress());
+
             topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageMethod(
                 requestHeader.getTopic(),
                 requestHeader.getDefaultTopic(),
@@ -218,7 +219,9 @@ public abstract class AbstractSendMessageProcessor extends AsyncNettyRequestProc
         }
 
         int queueIdInt = requestHeader.getQueueId();
+
         int idValid = Math.max(topicConfig.getWriteQueueNums(), topicConfig.getReadQueueNums());
+
         if (queueIdInt >= idValid) {
             String errorInfo = String.format("request queueId[%d] is illegal, %s Producer: %s",
                 queueIdInt,
@@ -226,6 +229,7 @@ public abstract class AbstractSendMessageProcessor extends AsyncNettyRequestProc
                 RemotingHelper.parseChannelRemoteAddr(ctx.channel()));
 
             log.warn(errorInfo);
+
             response.setCode(ResponseCode.SYSTEM_ERROR);
             response.setRemark(errorInfo);
 
@@ -242,6 +246,7 @@ public abstract class AbstractSendMessageProcessor extends AsyncNettyRequestProc
         final RemotingCommand response) {
         if (!request.isOnewayRPC()) {
             try {
+                //向客户端写回响应
                 ctx.writeAndFlush(response);
             } catch (Throwable e) {
                 log.error("SendMessageProcessor process request over, but response failed", e);

@@ -46,9 +46,16 @@ public class SlaveSynchronize {
     }
 
     public void syncAll() {
+        //同步主题配置
         this.syncTopicConfig();
+
+        //同步消费偏移
         this.syncConsumerOffset();
+
+        //同步延时消费偏移
         this.syncDelayOffset();
+
+        //同步组订阅配置
         this.syncSubscriptionGroupConfig();
     }
 
@@ -58,14 +65,18 @@ public class SlaveSynchronize {
             try {
                 TopicConfigSerializeWrapper topicWrapper =
                     this.brokerController.getBrokerOuterAPI().getAllTopicConfig(masterAddrBak);
+
                 if (!this.brokerController.getTopicConfigManager().getDataVersion()
                     .equals(topicWrapper.getDataVersion())) {
 
                     this.brokerController.getTopicConfigManager().getDataVersion()
                         .assignNewOne(topicWrapper.getDataVersion());
+
                     this.brokerController.getTopicConfigManager().getTopicConfigTable().clear();
+
                     this.brokerController.getTopicConfigManager().getTopicConfigTable()
                         .putAll(topicWrapper.getTopicConfigTable());
+
                     this.brokerController.getTopicConfigManager().persist();
 
                     log.info("Update slave topic config from master, {}", masterAddrBak);
@@ -82,9 +93,12 @@ public class SlaveSynchronize {
             try {
                 ConsumerOffsetSerializeWrapper offsetWrapper =
                     this.brokerController.getBrokerOuterAPI().getAllConsumerOffset(masterAddrBak);
+
                 this.brokerController.getConsumerOffsetManager().getOffsetTable()
                     .putAll(offsetWrapper.getOffsetTable());
+
                 this.brokerController.getConsumerOffsetManager().persist();
+
                 log.info("Update slave consumer offset from master, {}", masterAddrBak);
             } catch (Exception e) {
                 log.error("SyncConsumerOffset Exception, {}", masterAddrBak, e);
@@ -128,12 +142,17 @@ public class SlaveSynchronize {
                     .equals(subscriptionWrapper.getDataVersion())) {
                     SubscriptionGroupManager subscriptionGroupManager =
                         this.brokerController.getSubscriptionGroupManager();
+
                     subscriptionGroupManager.getDataVersion().assignNewOne(
                         subscriptionWrapper.getDataVersion());
+
                     subscriptionGroupManager.getSubscriptionGroupTable().clear();
+
                     subscriptionGroupManager.getSubscriptionGroupTable().putAll(
                         subscriptionWrapper.getSubscriptionGroupTable());
+
                     subscriptionGroupManager.persist();
+
                     log.info("Update slave Subscription Group from master, {}", masterAddrBak);
                 }
             } catch (Exception e) {

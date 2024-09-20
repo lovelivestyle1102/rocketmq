@@ -81,6 +81,7 @@ public class AdminBrokerProcessorTest {
     @Before
     public void init() {
         brokerController.setMessageStore(messageStore);
+
         adminBrokerProcessor = new AdminBrokerProcessor(brokerController);
 
         systemTopicSet = Sets.newHashSet(
@@ -91,6 +92,7 @@ public class AdminBrokerProcessorTest {
                 TopicValidator.AUTO_CREATE_TOPIC_KEY_TOPIC,
                 this.brokerController.getBrokerConfig().getBrokerClusterName(),
                 this.brokerController.getBrokerConfig().getBrokerClusterName() + "_" + MixAll.REPLY_TOPIC_POSTFIX);
+
         if (this.brokerController.getBrokerConfig().isTraceTopicEnable()) {
             systemTopicSet.add(this.brokerController.getBrokerConfig().getMsgTraceTopicName());
         }

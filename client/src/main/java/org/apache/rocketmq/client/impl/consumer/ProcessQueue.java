@@ -43,24 +43,45 @@ public class ProcessQueue {
         Long.parseLong(System.getProperty("rocketmq.client.rebalance.lockMaxLiveTime", "30000"));
     public final static long REBALANCE_LOCK_INTERVAL = Long.parseLong(System.getProperty("rocketmq.client.rebalance.lockInterval", "20000"));
     private final static long PULL_MAX_IDLE_TIME = Long.parseLong(System.getProperty("rocketmq.client.pull.pullMaxIdleTime", "120000"));
+
     private final InternalLogger log = ClientLogger.getLog();
+
     private final ReadWriteLock treeMapLock = new ReentrantReadWriteLock();
+
+    //偏移量和对应的消息
     private final TreeMap<Long, MessageExt> msgTreeMap = new TreeMap<Long, MessageExt>();
+
+    //消息个数
     private final AtomicLong msgCount = new AtomicLong();
+
+    //消息大小
     private final AtomicLong msgSize = new AtomicLong();
+
     private final Lock consumeLock = new ReentrantLock();
+
     /**
+     * 偏移量以及对应的消息
+     *
      * A subset of msgTreeMap, will only be used when orderly consume
      */
     private final TreeMap<Long, MessageExt> consumingMsgOrderlyTreeMap = new TreeMap<Long, MessageExt>();
+
     private final AtomicLong tryUnlockTimes = new AtomicLong(0);
+
     private volatile long queueOffsetMax = 0L;
+
     private volatile boolean dropped = false;
+
     private volatile long lastPullTimestamp = System.currentTimeMillis();
+
     private volatile long lastConsumeTimestamp = System.currentTimeMillis();
+
     private volatile boolean locked = false;
+
     private volatile long lastLockTimestamp = System.currentTimeMillis();
+
     private volatile boolean consuming = false;
+
     private volatile long msgAccCnt = 0;
 
     public boolean isLockExpired() {
@@ -131,6 +152,7 @@ public class ProcessQueue {
             try {
                 int validMsgCnt = 0;
                 for (MessageExt msg : msgs) {
+
                     MessageExt old = msgTreeMap.put(msg.getQueueOffset(), msg);
                     if (null == old) {
                         validMsgCnt++;
@@ -138,6 +160,7 @@ public class ProcessQueue {
                         msgSize.addAndGet(msg.getBody().length);
                     }
                 }
+
                 msgCount.addAndGet(validMsgCnt);
 
                 if (!msgTreeMap.isEmpty() && !this.consuming) {

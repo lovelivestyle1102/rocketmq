@@ -199,12 +199,16 @@ public class IndexService {
     }
 
     public void buildIndex(DispatchRequest req) {
+        //获取索引文件
         IndexFile indexFile = retryGetAndCreateIndexFile();
         if (indexFile != null) {
+            //获取索引文件的最后偏移量
             long endPhyOffset = indexFile.getEndPhyOffset();
             DispatchRequest msg = req;
             String topic = msg.getTopic();
             String keys = msg.getKeys();
+
+            //如果请求的偏移量小于索引文件的最大偏移量
             if (msg.getCommitLogOffset() < endPhyOffset) {
                 return;
             }
@@ -220,6 +224,7 @@ public class IndexService {
             }
 
             if (req.getUniqKey() != null) {
+                //向索引文件添加记录
                 indexFile = putKey(indexFile, msg, buildKey(topic, req.getUniqKey()));
                 if (indexFile == null) {
                     log.error("putKey error commitlog {} uniqkey {}", req.getCommitLogOffset(), req.getUniqKey());

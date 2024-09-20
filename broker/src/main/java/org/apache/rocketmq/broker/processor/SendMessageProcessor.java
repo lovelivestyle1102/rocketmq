@@ -96,8 +96,12 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                 if (requestHeader == null) {
                     return CompletableFuture.completedFuture(null);
                 }
+
+                //构造mqtraceContext
                 mqtraceContext = buildMsgContext(ctx, requestHeader);
+
                 this.executeSendMessageHookBefore(ctx, request, mqtraceContext);
+
                 if (requestHeader.isBatch()) {
                     return this.asyncSendBatchMessage(ctx, request, mqtraceContext, requestHeader);
                 } else {
@@ -115,21 +119,26 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
     private CompletableFuture<RemotingCommand> asyncConsumerSendMsgBack(ChannelHandlerContext ctx,
                                                                         RemotingCommand request) throws RemotingCommandException {
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
+
         final ConsumerSendMsgBackRequestHeader requestHeader =
                 (ConsumerSendMsgBackRequestHeader)request.decodeCommandCustomHeader(ConsumerSendMsgBackRequestHeader.class);
         String namespace = NamespaceUtil.getNamespaceFromResource(requestHeader.getGroup());
+
         if (this.hasConsumeMessageHook() && !UtilAll.isBlank(requestHeader.getOriginMsgId())) {
             ConsumeMessageContext context = buildConsumeMessageContext(namespace, requestHeader, request);
             this.executeConsumeMessageHookAfter(context);
         }
+
         SubscriptionGroupConfig subscriptionGroupConfig =
             this.brokerController.getSubscriptionGroupManager().findSubscriptionGroupConfig(requestHeader.getGroup());
+
         if (null == subscriptionGroupConfig) {
             response.setCode(ResponseCode.SUBSCRIPTION_GROUP_NOT_EXIST);
             response.setRemark("subscription group not exist, " + requestHeader.getGroup() + " "
                 + FAQUrl.suggestTodo(FAQUrl.SUBSCRIPTION_GROUP_NOT_EXIST));
             return CompletableFuture.completedFuture(response);
         }
+
         if (!PermName.isWriteable(this.brokerController.getBrokerConfig().getBrokerPermission())) {
             response.setCode(ResponseCode.NO_PERMISSION);
             response.setRemark("the broker[" + this.brokerController.getBrokerConfig().getBrokerIP1() + "] sending message is forbidden");
@@ -153,6 +162,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             newTopic,
             subscriptionGroupConfig.getRetryQueueNums(),
             PermName.PERM_WRITE | PermName.PERM_READ, topicSysFlag);
+
         if (null == topicConfig) {
             response.setCode(ResponseCode.SYSTEM_ERROR);
             response.setRemark("topic[" + newTopic + "] not exist");
@@ -164,6 +174,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             response.setRemark(String.format("the topic[%s] sending message is forbidden", newTopic));
             return CompletableFuture.completedFuture(response);
         }
+
         MessageExt msgExt = this.brokerController.getMessageStore().lookMessageByOffset(requestHeader.getOffset());
         if (null == msgExt) {
             response.setCode(ResponseCode.SYSTEM_ERROR);
@@ -175,6 +186,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         if (null == retryTopic) {
             MessageAccessor.putProperty(msgExt, MessageConst.PROPERTY_RETRY_TOPIC, msgExt.getTopic());
         }
+
         msgExt.setWaitStoreMsgOK(false);
 
         int delayLevel = requestHeader.getDelayLevel();
@@ -234,17 +246,21 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                 switch (r.getPutMessageStatus()) {
                     case PUT_OK:
                         String backTopic = msgExt.getTopic();
+
                         String correctTopic = msgExt.getProperty(MessageConst.PROPERTY_RETRY_TOPIC);
                         if (correctTopic != null) {
                             backTopic = correctTopic;
                         }
+
                         if (TopicValidator.RMQ_SYS_SCHEDULE_TOPIC.equals(msgInner.getTopic())) {
                             this.brokerController.getBrokerStatsManager().incTopicPutNums(msgInner.getTopic());
                             this.brokerController.getBrokerStatsManager().incTopicPutSize(msgInner.getTopic(), r.getAppendMessageResult().getWroteBytes());
                             this.brokerController.getBrokerStatsManager().incQueuePutNums(msgInner.getTopic(), msgInner.getQueueId());
                             this.brokerController.getBrokerStatsManager().incQueuePutSize(msgInner.getTopic(), msgInner.getQueueId(), r.getAppendMessageResult().getWroteBytes());
                         }
+
                         this.brokerController.getBrokerStatsManager().incSendBackNums(requestHeader.getGroup(), backTopic);
+
                         response.setCode(ResponseCode.SUCCESS);
                         response.setRemark(null);
                         return response;
@@ -266,6 +282,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                                                                 SendMessageContext mqtraceContext,
                                                                 SendMessageRequestHeader requestHeader) {
         final RemotingCommand response = preSend(ctx, request, requestHeader);
+
         final SendMessageResponseHeader responseHeader = (SendMessageResponseHeader)response.readCustomHeader();
 
         if (response.getCode() != -1) {
@@ -275,16 +292,19 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         final byte[] body = request.getBody();
 
         int queueIdInt = requestHeader.getQueueId();
+
         TopicConfig topicConfig = this.brokerController.getTopicConfigManager().selectTopicConfig(requestHeader.getTopic());
 
         if (queueIdInt < 0) {
             queueIdInt = randomQueueId(topicConfig.getWriteQueueNums());
         }
 
+        //构造内存存储对象
         MessageExtBrokerInner msgInner = new MessageExtBrokerInner();
         msgInner.setTopic(requestHeader.getTopic());
         msgInner.setQueueId(queueIdInt);
 
+        //死信队列处理
         if (!handleRetryAndDLQ(requestHeader, response, request, msgInner, topicConfig)) {
             return CompletableFuture.completedFuture(response);
         }
@@ -311,7 +331,10 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         }
 
         CompletableFuture<PutMessageResult> putMessageResult = null;
+
         String transFlag = origProps.get(MessageConst.PROPERTY_TRANSACTION_PREPARED);
+
+        //是否是事务消息
         if (transFlag != null && Boolean.parseBoolean(transFlag)) {
             if (this.brokerController.getBrokerConfig().isRejectTransactionMessage()) {
                 response.setCode(ResponseCode.NO_PERMISSION);
@@ -367,6 +390,8 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                     DLQ_NUMS_PER_GROUP,
                     PermName.PERM_WRITE | PermName.PERM_READ, 0
                 );
+
+                //替换原有的主题和队列，修改成%DLQ%开头的主题
                 msg.setTopic(newTopic);
                 msg.setQueueId(queueIdInt);
                 msg.setDelayTimeLevel(0);
@@ -391,6 +416,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                                         final SendMessageRequestHeader requestHeader) throws RemotingCommandException {
 
         final RemotingCommand response = RemotingCommand.createResponseCommand(SendMessageResponseHeader.class);
+
         final SendMessageResponseHeader responseHeader = (SendMessageResponseHeader)response.readCustomHeader();
 
         response.setOpaque(request.getOpaque());
@@ -408,7 +434,9 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         }
 
         response.setCode(-1);
+
         super.msgCheck(ctx, requestHeader, response);
+
         if (response.getCode() != -1) {
             return response;
         }

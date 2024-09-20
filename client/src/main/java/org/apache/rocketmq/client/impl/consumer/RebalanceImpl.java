@@ -43,14 +43,21 @@ import org.apache.rocketmq.common.protocol.heartbeat.SubscriptionData;
 
 public abstract class RebalanceImpl {
     protected static final InternalLogger log = ClientLogger.getLog();
+
     protected final ConcurrentMap<MessageQueue, ProcessQueue> processQueueTable = new ConcurrentHashMap<MessageQueue, ProcessQueue>(64);
+
     protected final ConcurrentMap<String/* topic */, Set<MessageQueue>> topicSubscribeInfoTable =
         new ConcurrentHashMap<String, Set<MessageQueue>>();
+
     protected final ConcurrentMap<String /* topic */, SubscriptionData> subscriptionInner =
         new ConcurrentHashMap<String, SubscriptionData>();
+
     protected String consumerGroup;
+
     protected MessageModel messageModel;
+
     protected AllocateMessageQueueStrategy allocateMessageQueueStrategy;
+
     protected MQClientInstance mQClientFactory;
 
     public RebalanceImpl(String consumerGroup, MessageModel messageModel,
@@ -215,7 +222,9 @@ public abstract class RebalanceImpl {
     }
 
     public void doRebalance(final boolean isOrder) {
+        //在初始化consumer的时候就添了consumer.subscribe("TopicTest", "*");
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
+
         if (subTable != null) {
             for (final Map.Entry<String, SubscriptionData> entry : subTable.entrySet()) {
                 final String topic = entry.getKey();
@@ -256,8 +265,12 @@ public abstract class RebalanceImpl {
                 break;
             }
             case CLUSTERING: {
+                //根据主题获取消息队列
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
+
+                //根据主题和消费者组去获取所有消费者
                 List<String> cidAll = this.mQClientFactory.findConsumerIdList(topic, consumerGroup);
+
                 if (null == mqSet) {
                     if (!topic.startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
                         log.warn("doRebalance, {}, but the topic[{}] not exist.", consumerGroup, topic);
@@ -275,10 +288,12 @@ public abstract class RebalanceImpl {
                     Collections.sort(mqAll);
                     Collections.sort(cidAll);
 
+                    //均衡负载
                     AllocateMessageQueueStrategy strategy = this.allocateMessageQueueStrategy;
 
                     List<MessageQueue> allocateResult = null;
                     try {
+                        //分配
                         allocateResult = strategy.allocate(
                             this.consumerGroup,
                             this.mQClientFactory.getClientId(),
@@ -295,6 +310,7 @@ public abstract class RebalanceImpl {
                         allocateResultSet.addAll(allocateResult);
                     }
 
+                    //创建拉取消息的ProcessQueue
                     boolean changed = this.updateProcessQueueTableInRebalance(topic, allocateResultSet, isOrder);
                     if (changed) {
                         log.info(
@@ -318,6 +334,7 @@ public abstract class RebalanceImpl {
             if (!subTable.containsKey(mq.getTopic())) {
 
                 ProcessQueue pq = this.processQueueTable.remove(mq);
+
                 if (pq != null) {
                     pq.setDropped(true);
                     log.info("doRebalance, {}, truncateMessageQueueNotMyTopic remove unnecessary mq, {}", consumerGroup, mq);
@@ -365,6 +382,8 @@ public abstract class RebalanceImpl {
         }
 
         List<PullRequest> pullRequestList = new ArrayList<PullRequest>();
+
+        //根据自己负责的主题队列创建ProcessQueue并创建拉取消息请求
         for (MessageQueue mq : mqSet) {
             if (!this.processQueueTable.containsKey(mq)) {
                 if (isOrder && !this.lock(mq)) {
@@ -373,6 +392,7 @@ public abstract class RebalanceImpl {
                 }
 
                 this.removeDirtyOffset(mq);
+
                 ProcessQueue pq = new ProcessQueue();
 
                 long nextOffset = -1L;
@@ -403,6 +423,7 @@ public abstract class RebalanceImpl {
             }
         }
 
+        //分发拉取消息请求
         this.dispatchPullRequest(pullRequestList);
 
         return changed;

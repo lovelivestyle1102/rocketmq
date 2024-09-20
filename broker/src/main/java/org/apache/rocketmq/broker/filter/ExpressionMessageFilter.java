@@ -129,6 +129,7 @@ public class ExpressionMessageFilter implements MessageFilter {
         }
 
         ConsumerFilterData realFilterData = this.consumerFilterData;
+
         Map<String, String> tempProperties = properties;
 
         // no expression

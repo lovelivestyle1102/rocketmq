@@ -30,43 +30,61 @@ public class BrokerConfig {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
 
     private String rocketmqHome = System.getProperty(MixAll.ROCKETMQ_HOME_PROPERTY, System.getenv(MixAll.ROCKETMQ_HOME_ENV));
+
     @ImportantField
     private String namesrvAddr = System.getProperty(MixAll.NAMESRV_ADDR_PROPERTY, System.getenv(MixAll.NAMESRV_ADDR_ENV));
+
     @ImportantField
     private String brokerIP1 = RemotingUtil.getLocalAddress();
     private String brokerIP2 = RemotingUtil.getLocalAddress();
+
     @ImportantField
     private String brokerName = localHostName();
+
     @ImportantField
     private String brokerClusterName = "DefaultCluster";
+
     @ImportantField
     private long brokerId = MixAll.MASTER_ID;
+
     private int brokerPermission = PermName.PERM_READ | PermName.PERM_WRITE;
+
     private int defaultTopicQueueNums = 8;
+
     @ImportantField
     private boolean autoCreateTopicEnable = true;
 
     private boolean clusterTopicEnable = true;
 
     private boolean brokerTopicEnable = true;
+
     @ImportantField
     private boolean autoCreateSubscriptionGroup = true;
+
     private String messageStorePlugIn = "";
+
     @ImportantField
     private String msgTraceTopicName = TopicValidator.RMQ_SYS_TRACE_TOPIC;
+
     @ImportantField
     private boolean traceTopicEnable = false;
     /**
      * thread numbers for send message thread pool.
      */
     private int sendMessageThreadPoolNums = Math.min(Runtime.getRuntime().availableProcessors(), 4);
+
     private int pullMessageThreadPoolNums = 16 + Runtime.getRuntime().availableProcessors() * 2;
+
     private int processReplyMessageThreadPoolNums = 16 + Runtime.getRuntime().availableProcessors() * 2;
+
     private int queryMessageThreadPoolNums = 8 + Runtime.getRuntime().availableProcessors();
 
     private int adminBrokerThreadPoolNums = 16;
+
     private int clientManageThreadPoolNums = 32;
+
     private int consumerManageThreadPoolNums = 32;
+
     private int heartbeatThreadPoolNums = Math.min(32, Runtime.getRuntime().availableProcessors());
 
     /**

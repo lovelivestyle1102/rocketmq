@@ -55,9 +55,13 @@ public class NamesrvStartup {
 
         try {
             NamesrvController controller = createNamesrvController(args);
+
             start(controller);
+
             String tip = "The Name Server boot success. serializeType=" + RemotingCommand.getSerializeTypeConfigInThisServer();
+
             log.info(tip);
+
             System.out.printf("%s%n", tip);
             return controller;
         } catch (Throwable e) {
@@ -123,6 +127,7 @@ public class NamesrvStartup {
         MixAll.printObjectProperties(log, namesrvConfig);
         MixAll.printObjectProperties(log, nettyServerConfig);
 
+        //创建控制器
         final NamesrvController controller = new NamesrvController(namesrvConfig, nettyServerConfig);
 
         // remember all configs to prevent discard

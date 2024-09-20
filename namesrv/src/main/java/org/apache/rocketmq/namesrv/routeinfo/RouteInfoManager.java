@@ -48,12 +48,24 @@ import org.apache.rocketmq.remoting.common.RemotingUtil;
 
 public class RouteInfoManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
+
     private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;
+
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    //topic消息队列路由信息，消息发送时根据路由表进行负载均衡
     private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;
+
+    //broker基础信息，包含brokerName，所属集群名称，主备broker地址
     private final HashMap<String/* brokerName */, BrokerData> brokerAddrTable;
+
+    //broker集群信息，存储集群中所有broker名称
     private final HashMap<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
+
+    //Broker状态信息，NameServer每次收到心跳包时会替换该信息
     private final HashMap<String/* brokerAddr */, BrokerLiveInfo> brokerLiveTable;
+
+    //broker上的filterServer列表，用于类模式消息过滤
     private final HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
 
     public RouteInfoManager() {
@@ -100,6 +112,8 @@ public class RouteInfoManager {
         return topicList.encode();
     }
 
+
+    //broker信息注册
     public RegisterBrokerResult registerBroker(
         final String clusterName,
         final String brokerAddr,
@@ -114,6 +128,7 @@ public class RouteInfoManager {
             try {
                 this.lock.writeLock().lockInterruptibly();
 
+                //获取集群对应的broker列表
                 Set<String> brokerNames = this.clusterAddrTable.get(clusterName);
                 if (null == brokerNames) {
                     brokerNames = new HashSet<String>();
@@ -123,12 +138,14 @@ public class RouteInfoManager {
 
                 boolean registerFirst = false;
 
+                //根据borkername获取borker信息
                 BrokerData brokerData = this.brokerAddrTable.get(brokerName);
                 if (null == brokerData) {
                     registerFirst = true;
                     brokerData = new BrokerData(clusterName, brokerName, new HashMap<Long, String>());
                     this.brokerAddrTable.put(brokerName, brokerData);
                 }
+
                 Map<Long, String> brokerAddrsMap = brokerData.getBrokerAddrs();
                 //Switch slave to master: first remove <1, IP:PORT> in namesrv, then add <0, IP:PORT>
                 //The same IP:PORT must only have one record in brokerAddrTable
@@ -143,6 +160,7 @@ public class RouteInfoManager {
                 String oldAddr = brokerData.getBrokerAddrs().put(brokerId, brokerAddr);
                 registerFirst = registerFirst || (null == oldAddr);
 
+                //创建主题对应的队列列表
                 if (null != topicConfigWrapper
                     && MixAll.MASTER_ID == brokerId) {
                     if (this.isBrokerTopicConfigChanged(brokerAddr, topicConfigWrapper.getDataVersion())
@@ -157,6 +175,7 @@ public class RouteInfoManager {
                     }
                 }
 
+                //维护活跃的broker列表
                 BrokerLiveInfo prevBrokerLiveInfo = this.brokerLiveTable.put(brokerAddr,
                     new BrokerLiveInfo(
                         System.currentTimeMillis(),
@@ -441,13 +460,20 @@ public class RouteInfoManager {
 
     public void scanNotActiveBroker() {
         Iterator<Entry<String, BrokerLiveInfo>> it = this.brokerLiveTable.entrySet().iterator();
+
         while (it.hasNext()) {
+
             Entry<String, BrokerLiveInfo> next = it.next();
+
             long last = next.getValue().getLastUpdateTimestamp();
+            //NameServer 时扫描 brokerLiveTable 检测上次心跳包与 前系统时间的时间差，
+            //如果时间戳大于 120s ，则需要移除 Broker 信息
             if ((last + BROKER_CHANNEL_EXPIRED_TIME) < System.currentTimeMillis()) {
+                //关闭连接
                 RemotingUtil.closeChannel(next.getValue().getChannel());
                 it.remove();
                 log.warn("The broker channel expired, {} {}ms", next.getKey(), BROKER_CHANNEL_EXPIRED_TIME);
+
                 this.onChannelDestroy(next.getKey(), next.getValue().getChannel());
             }
         }

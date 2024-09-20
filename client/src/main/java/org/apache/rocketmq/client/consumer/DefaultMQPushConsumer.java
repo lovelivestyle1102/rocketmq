@@ -93,6 +93,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private MessageModel messageModel = MessageModel.CLUSTERING;
 
     /**
+     *  根据消息进度从消息服务器拉去不到消息时重新计算消费策略
+     *
      * Consuming point on consumer booting.
      * </p>
      *
@@ -134,31 +136,43 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private String consumeTimestamp = UtilAll.timeMillisToHumanString3(System.currentTimeMillis() - (1000 * 60 * 30));
 
     /**
+     * 集群模式下消息队列负载策略
+     *
      * Queue allocation algorithm specifying how message queues are allocated to each consumer clients.
      */
     private AllocateMessageQueueStrategy allocateMessageQueueStrategy;
 
     /**
+     * 订阅消息
+     *
      * Subscription relationship
      */
     private Map<String /* topic */, String /* sub expression */> subscription = new HashMap<String, String>();
 
     /**
+     * 消息业务监听器
+     *
      * Message listener
      */
     private MessageListener messageListener;
 
     /**
+     * 消息消费进度存储器
+     *
      * Offset Storage
      */
     private OffsetStore offsetStore;
 
     /**
+     * 消息者最小线程数
+     *
      * Minimum consumer thread number
      */
     private int consumeThreadMin = 20;
 
     /**
+     * 消费者最大线程数
+     *
      * Max consumer thread number
      */
     private int consumeThreadMax = 20;
@@ -169,6 +183,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private long adjustThreadPoolNumsThreshold = 100000;
 
     /**
+     *
+     *
      * Concurrently max span offset.it has no effect on sequential consumption
      */
     private int consumeConcurrentlyMaxSpan = 2000;
@@ -221,6 +237,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private int consumeMessageBatchMaxSize = 1;
 
     /**
+     * 每次消息拉去所拉取的条数
+     *
      * Batch pull size
      */
     private int pullBatchSize = 32;

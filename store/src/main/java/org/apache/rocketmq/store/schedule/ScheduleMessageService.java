@@ -53,6 +53,7 @@ public class ScheduleMessageService extends ConfigManager {
     private static final long DELAY_FOR_A_WHILE = 100L;
     private static final long DELAY_FOR_A_PERIOD = 10000L;
 
+    //延迟等级和对应的延时时间
     private final ConcurrentMap<Integer /* level */, Long/* delay timeMillis */> delayLevelTable =
         new ConcurrentHashMap<Integer, Long>(32);
 
@@ -123,6 +124,7 @@ public class ScheduleMessageService extends ConfigManager {
                 }
 
                 if (timeDelay != null) {
+                    //为每一个延时等级开启定时任务，每秒
                     this.timer.schedule(new DeliverDelayedMessageTimerTask(level, offset), FIRST_DELAY_TIME);
                 }
             }
@@ -238,6 +240,7 @@ public class ScheduleMessageService extends ConfigManager {
 
         String levelString = this.defaultMessageStore.getMessageStoreConfig().getMessageDelayLevel();
         try {
+            //"1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h";
             String[] levelArray = levelString.split(" ");
             for (int i = 0; i < levelArray.length; i++) {
                 String value = levelArray[i];
@@ -248,8 +251,11 @@ public class ScheduleMessageService extends ConfigManager {
                 if (level > this.maxDelayLevel) {
                     this.maxDelayLevel = level;
                 }
+
                 long num = Long.parseLong(value.substring(0, value.length() - 1));
                 long delayTimeMillis = tu * num;
+
+                //加入延时队列，一共有18个等级
                 this.delayLevelTable.put(level, delayTimeMillis);
             }
         } catch (Exception e) {
@@ -300,6 +306,7 @@ public class ScheduleMessageService extends ConfigManager {
         }
 
         public void executeOnTimeup() {
+            //获取延时主题对应的消费队列
             ConsumeQueue cq =
                 ScheduleMessageService.this.defaultMessageStore.findConsumeQueue(TopicValidator.RMQ_SYS_SCHEDULE_TOPIC,
                     delayLevel2QueueId(delayLevel));
@@ -325,18 +332,24 @@ public class ScheduleMessageService extends ConfigManager {
                                     //can't find ext content.So re compute tags code.
                                     log.error("[BUG] can't find consume queue extend file content!addr={}, offsetPy={}, sizePy={}",
                                         tagsCode, offsetPy, sizePy);
+                                    //获取存储时间
                                     long msgStoreTime = defaultMessageStore.getCommitLog().pickupStoreTimestamp(offsetPy, sizePy);
+
+
                                     tagsCode = computeDeliverTimestamp(delayLevel, msgStoreTime);
                                 }
                             }
 
                             long now = System.currentTimeMillis();
+
+                            //此处判断延时时间是否已到
                             long deliverTimestamp = this.correctDeliverTimestamp(now, tagsCode);
 
                             nextOffset = offset + (i / ConsumeQueue.CQ_STORE_UNIT_SIZE);
 
                             long countdown = deliverTimestamp - now;
 
+                            //已经过期了
                             if (countdown <= 0) {
                                 MessageExt msgExt =
                                     ScheduleMessageService.this.defaultMessageStore.lookMessageByOffset(
@@ -344,12 +357,15 @@ public class ScheduleMessageService extends ConfigManager {
 
                                 if (msgExt != null) {
                                     try {
+                                        //做主题切换
                                         MessageExtBrokerInner msgInner = this.messageTimeup(msgExt);
                                         if (TopicValidator.RMQ_SYS_TRANS_HALF_TOPIC.equals(msgInner.getTopic())) {
                                             log.error("[BUG] the real topic of schedule msg is {}, discard the msg. msg={}",
                                                 msgInner.getTopic(), msgInner);
                                             continue;
                                         }
+
+                                        //正常投递
                                         PutMessageResult putMessageResult =
                                             ScheduleMessageService.this.writeMessageStore
                                                 .putMessage(msgInner);
@@ -388,6 +404,7 @@ public class ScheduleMessageService extends ConfigManager {
                                     }
                                 }
                             } else {
+                              //还未到延时时间，则重新定时
                                 ScheduleMessageService.this.timer.schedule(
                                     new DeliverDelayedMessageTimerTask(this.delayLevel, nextOffset),
                                     countdown);
@@ -449,8 +466,10 @@ public class ScheduleMessageService extends ConfigManager {
             msgInner.setWaitStoreMsgOK(false);
             MessageAccessor.clearProperty(msgInner, MessageConst.PROPERTY_DELAY_TIME_LEVEL);
 
+            //换回原有主题
             msgInner.setTopic(msgInner.getProperty(MessageConst.PROPERTY_REAL_TOPIC));
 
+            //换回原来队列
             String queueIdStr = msgInner.getProperty(MessageConst.PROPERTY_REAL_QUEUE_ID);
             int queueId = Integer.parseInt(queueIdStr);
             msgInner.setQueueId(queueId);

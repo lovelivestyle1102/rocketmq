@@ -32,6 +32,7 @@ public class PullScheduleService {
         final MQPullConsumerScheduleService scheduleService = new MQPullConsumerScheduleService("GroupName1");
 
         scheduleService.setMessageModel(MessageModel.CLUSTERING);
+
         scheduleService.registerPullTaskCallback("TopicTest", new PullTaskCallback() {
 
             @Override
@@ -44,7 +45,9 @@ public class PullScheduleService {
                         offset = 0;
 
                     PullResult pullResult = consumer.pull(mq, "*", offset, 32);
+
                     System.out.printf("%s%n", offset + "\t" + mq + "\t" + pullResult);
+
                     switch (pullResult.getPullStatus()) {
                         case FOUND:
                             break;
@@ -56,6 +59,7 @@ public class PullScheduleService {
                         default:
                             break;
                     }
+
                     consumer.updateConsumeOffset(mq, pullResult.getNextBeginOffset());
 
                     context.setPullNextDelayTimeMillis(100);

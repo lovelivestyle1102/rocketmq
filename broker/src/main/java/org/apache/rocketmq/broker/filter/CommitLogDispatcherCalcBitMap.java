@@ -59,11 +59,13 @@ public class CommitLogDispatcherCalcBitMap implements CommitLogDispatcher {
             }
 
             Iterator<ConsumerFilterData> iterator = filterDatas.iterator();
+
             BitsArray filterBitMap = BitsArray.create(
                 this.consumerFilterManager.getBloomFilter().getM()
             );
 
             long startTime = System.currentTimeMillis();
+
             while (iterator.hasNext()) {
                 ConsumerFilterData filterData = iterator.next();
 

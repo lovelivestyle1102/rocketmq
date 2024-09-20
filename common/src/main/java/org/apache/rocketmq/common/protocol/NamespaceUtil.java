@@ -91,6 +91,7 @@ public class NamespaceUtil {
         }
 
         String resourceWithoutRetryAndDLQ = withOutRetryAndDLQ(resourceWithOutNamespace);
+
         StringBuilder stringBuilder = new StringBuilder();
 
         if (isRetryTopic(resourceWithOutNamespace)) {

@@ -52,12 +52,16 @@ public class BrokerStatsManager {
     public static final String COMMERCIAL_SEND_SIZE = "COMMERCIAL_SEND_SIZE";
     public static final String COMMERCIAL_RCV_SIZE = "COMMERCIAL_RCV_SIZE";
     public static final String COMMERCIAL_PERM_FAILURES = "COMMERCIAL_PERM_FAILURES";
+
     public static final String COMMERCIAL_OWNER = "Owner";
+
     // Message Size limit for one api-calling count.
     public static final double SIZE_PER_COUNT = 64 * 1024;
 
     public static final String GROUP_GET_FALL_SIZE = "GROUP_GET_FALL_SIZE";
+
     public static final String GROUP_GET_FALL_TIME = "GROUP_GET_FALL_TIME";
+
     // Pull Message Latency
     public static final String GROUP_GET_LATENCY = "GROUP_GET_LATENCY";
 
@@ -65,14 +69,21 @@ public class BrokerStatsManager {
      * read disk follow stats
      */
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.ROCKETMQ_STATS_LOGGER_NAME);
+
     private static final InternalLogger COMMERCIAL_LOG = InternalLoggerFactory.getLogger(LoggerName.COMMERCIAL_LOGGER_NAME);
+
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl(
         "BrokerStatsThread"));
+
     private final ScheduledExecutorService commercialExecutor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl(
         "CommercialStatsThread"));
+
     private final HashMap<String, StatsItemSet> statsTable = new HashMap<String, StatsItemSet>();
+
     private final String clusterName;
+
     private final MomentStatsItemSet momentStatsItemSetFallSize = new MomentStatsItemSet(GROUP_GET_FALL_SIZE, scheduledExecutorService, log);
+
     private final MomentStatsItemSet momentStatsItemSetFallTime = new MomentStatsItemSet(GROUP_GET_FALL_TIME, scheduledExecutorService, log);
 
     public BrokerStatsManager(String clusterName) {

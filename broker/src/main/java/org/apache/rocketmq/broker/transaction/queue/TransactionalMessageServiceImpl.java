@@ -452,6 +452,8 @@ public class TransactionalMessageServiceImpl implements TransactionalMessageServ
 
     private OperationResult getHalfMessageByOffset(long commitLogOffset) {
         OperationResult response = new OperationResult();
+
+        //查找对应的事务消息
         MessageExt messageExt = this.transactionalMessageBridge.lookMessageByOffset(commitLogOffset);
         if (messageExt != null) {
             response.setPrepareMessage(messageExt);
